@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Backlog Prioritizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f5efe0;--surface:#fdf9ed;--ink:#1c1b1a;--muted:#6f6a60;--line:#e4dcc8;--accent:#1c1b1a;--accent-ink:#fdf9ed;--bar:#e3d6b0;--must:#b3261e;--should:#a15c00;--could:#2d5fa8;--wont:#6f6a60;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1a1815;--surface:#232019;--ink:#efe9dc;--muted:#a39c8c;--line:#38332a;--accent:#efe9dc;--accent-ink:#1a1815;--bar:#4a4130;--must:#ff8b82;--should:#f0b35a;--could:#8db6f0;--wont:#98a39e;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1a1815;--surface:#232019;--ink:#efe9dc;--muted:#a39c8c;--line:#38332a;--accent:#efe9dc;--accent-ink:#1a1815;--bar:#4a4130;--must:#ff8b82;--should:#f0b35a;--could:#8db6f0;--wont:#98a39e;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.5 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums}
+main{max-width:1080px;margin:0 auto;padding:28px 16px 56px}
+h1{font-size:28px;line-height:1.15;margin:0 0 6px;font-weight:700;letter-spacing:-.01em;text-align:center}
+.sub{margin:0 auto 22px;color:var(--muted);max-width:62ch;text-align:center}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.bar .grow{flex:1}
+button,select,input,textarea{font:inherit;color:inherit}
+button{border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:500}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;border-radius:0;background:transparent}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.stats{display:flex;flex-wrap:wrap;gap:6px 22px;margin:0 0 14px;color:var(--muted);font-size:14px}
+.stats b{color:var(--ink);font-weight:600}
+.wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:860px}
+th{font-weight:600;font-size:13px;color:var(--muted);text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td.rank{width:34px;color:var(--muted);text-align:right}
+td input,td select{width:100%;border:1px solid transparent;background:transparent;padding:6px;border-radius:5px}
+td input:hover,td select:hover{border-color:var(--line)}
+td input[type=number]{text-align:right}
+.k{width:96px}.n{width:82px}.sel{width:112px}
+.score{position:relative;min-width:120px;height:30px;border-radius:5px;background:linear-gradient(90deg,var(--bar) var(--w,0%),transparent var(--w,0%));display:flex;align-items:center;padding:0 8px;font-weight:600}
+.m-Must{color:var(--must)}.m-Should{color:var(--should)}.m-Could{color:var(--could)}.m-Wont{color:var(--wont)}
+td select{font-weight:600}
+.del{padding:4px 9px;color:var(--muted)}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+details{margin-top:18px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 16px}
+summary{cursor:pointer;font-weight:600}
+textarea{width:100%;min-height:130px;margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);font:13px/1.45 ui-monospace,Menlo,Consolas,monospace}
+.note{color:var(--muted);font-size:13px;margin:8px 0 0}
+.how{margin:44px auto 0;max-width:760px;font-size:14px;color:var(--muted)}
+.how h2{font-size:16px;color:var(--ink);margin:30px 0 10px;font-weight:600}
+.how h2:first-child{margin-top:0}
+.how p{margin:0 0 10px}
+.formula{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;color:var(--ink);font-weight:600;font-size:15px;overflow-x:auto}
+.terms{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:12px 0 0}
+.terms div{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.terms dt{color:var(--ink);font-weight:600}
+.terms dd{margin:2px 0 0}
+.terms dt[class^="m-"]{font-weight:700}
+.ex table{min-width:600px}
+.ex .r{text-align:right}
+.ex td,.ex th{padding:10px 12px}
+.cap{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:14px}
+.cap input{width:72px;padding:7px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);text-align:right}
+tr.over td{opacity:.55}
+tr.cut td{padding:0;border-bottom:0}
+.cutline{padding:7px 12px;font-size:13px;font-weight:600;color:var(--ink);border-top:2px dashed var(--accent);border-bottom:1px solid var(--line);background:var(--bg)}
+.warn{color:var(--must);font-weight:600}
+</style>
+</head>
+<body>
+<main>
+<h1>Backlog prioritizer</h1>
+<p class="sub">Score each item with RICE, tag it with MoSCoW, and see the backlog ranked. Paste a Jira CSV export or edit the rows directly.</p>
+
+<div class="bar">
+  <div class="seg" role="group" aria-label="Rank by">
+    <button id="s-rice" aria-pressed="true" type="button">Rank by RICE</button>
+    <button id="s-mos" aria-pressed="false" type="button">MoSCoW, then RICE</button>
+  </div>
+  <label class="cap">Sprint capacity <input id="cap" type="number" min="0" step="any" value="10" aria-label="Sprint capacity in person-weeks"> person-weeks</label>
+  <span class="grow"></span>
+  <button id="add" type="button">Add item</button>
+  <button id="sample" type="button">Load sample backlog</button>
+  <button id="clear" type="button">Clear all</button>
+</div>
+
+<p class="stats" id="stats"></p>
+
+<div class="wrap">
+<table>
+<thead><tr>
+<th></th><th>Key</th><th>Summary</th><th>Reach</th><th>Impact</th><th>Conf. %</th><th>Effort</th><th>RICE score</th><th>MoSCoW</th><th></th>
+</tr></thead>
+<tbody id="rows"></tbody>
+</table>
+<div class="empty" id="empty" hidden>No items yet. Add one, load the sample backlog, or import a CSV below.</div>
+</div>
+
+<details id="io">
+<summary>Import from or export to CSV</summary>
+<textarea id="csv" spellcheck="false" placeholder="Paste a Jira CSV export here. Columns named Issue key (or Key) and Summary (or Title) are picked up. Reach, Impact, Confidence, Effort and MoSCoW columns are used when present."></textarea>
+<div class="bar" style="margin-top:10px">
+  <button id="imp" class="primary" type="button">Import pasted CSV</button>
+  <button id="file" type="button">Choose a CSV file</button>
+  <input id="fileIn" type="file" accept=".csv,text/csv" hidden>
+  <span class="grow"></span>
+  <button id="exp" type="button">Show ranked backlog as CSV</button>
+</div>
+<p class="note" id="msg" role="status"></p>
+</details>
+
+<section class="how">
+<h2>How RICE scoring works</h2>
+<div class="formula">RICE score = Reach × Impact × Confidence ÷ Effort</div>
+<dl class="terms">
+<div><dt>Reach</dt><dd>People or events affected per period</dd></div>
+<div><dt>Impact</dt><dd>0.25 (minimal) to 3 (massive)</dd></div>
+<div><dt>Confidence</dt><dd>How sure you are, as a percentage</dd></div>
+<div><dt>Effort</dt><dd>Person-weeks to build</dd></div>
+</dl>
+<h2>How MoSCoW tagging works</h2>
+<p>Tag what the release needs. Ranking by MoSCoW first keeps every Must above the rest, then orders each group by RICE.</p>
+<dl class="terms">
+<div><dt class="m-Must">Must</dt><dd>The release fails without it</dd></div>
+<div><dt class="m-Should">Should</dt><dd>Important, but not critical</dd></div>
+<div><dt class="m-Could">Could</dt><dd>Nice to have if time allows</dd></div>
+<div><dt class="m-Wont">Won’t</dt><dd>Not in this release</dd></div>
+</dl>
+<h2>Worked example</h2>
+<div class="wrap ex">
+<table>
+<thead><tr><th>Item</th><th class="r">Reach</th><th class="r">Impact</th><th class="r">Conf.</th><th class="r">Effort</th><th>Calculation</th><th class="r">RICE</th></tr></thead>
+<tbody>
+<tr><td>Auto-retry failed payouts</td><td class="r">4,000</td><td class="r">2</td><td class="r">80%</td><td class="r">3</td><td>4,000 × 2 × 0.8 ÷ 3</td><td class="r"><b>2,133</b></td></tr>
+<tr><td>Dark mode</td><td class="r">2,500</td><td class="r">0.25</td><td class="r">100%</td><td class="r">2</td><td>2,500 × 0.25 × 1 ÷ 2</td><td class="r"><b>313</b></td></tr>
+</tbody>
+</table>
+</div>
+<p style="margin-top:12px">Retries rank far higher, even though dark mode is cheaper to build. Load the sample backlog above to see seven items scored this way.</p>
+</section>
+</main>
+
+<script>
+(function(){
+var items=[],mode='rice',seq=0;
+var IMPACT=[['0.25','0.25 Minimal'],['0.5','0.5 Low'],['1','1 Medium'],['2','2 High'],['3','3 Massive']];
+var MOS=['Must','Should','Could','Won’t'];
+var ORDER={Must:0,Should:1,Could:2,'Won’t':3};
+var $=function(id){return document.getElementById(id)};
+
+function mk(o){o=o||{};return{id:++seq,key:o.key||'',sum:o.sum||'',reach:num(o.reach,100),impact:num(o.impact,1),conf:num(o.conf,80),effort:num(o.effort,1),mos:MOS.indexOf(o.mos)>-1?o.mos:'Should'}}
+function num(v,d){var n=parseFloat(v);return isFinite(n)&&n>=0?n:d}
+function score(i){return i.effort>0?(i.reach*i.impact*(i.conf/100))/i.effort:0}
+function fmt(n){return n>=100?Math.round(n).toLocaleString('en-IN'):(Math.round(n*10)/10).toString()}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function mcls(m){return 'm-'+(m==='Won’t'?'Wont':m)}
+function capacity(){var v=parseFloat($('cap').value);return isFinite(v)&&v>0?v:0}
+
+function sorted(){
+  return items.slice().sort(function(a,b){
+    if(mode==='mos'&&ORDER[a.mos]!==ORDER[b.mos])return ORDER[a.mos]-ORDER[b.mos];
+    return score(b)-score(a);
+  });
+}
+
+function render(){
+  var list=sorted(),max=0;
+  list.forEach(function(i){max=Math.max(max,score(i))});
+  $('empty').hidden=items.length>0;
+  var cap=capacity(),used=0,cut=-1;
+  if(cap>0){for(var n=0;n<list.length;n++){if(used+list[n].effort>cap){cut=n;break}used+=list[n].effort}}
+  $('rows').innerHTML=list.map(function(i,idx){
+    var w=max>0?Math.round(score(i)/max*100):0;
+    var line=idx===cut?'<tr class="cut"><td colspan="10"><div class="cutline">Sprint capacity reached: '+fmt(used)+' of '+fmt(cap)+' person-weeks used. Items below do not fit.</div></td></tr>':'';
+    return line+'<tr data-id="'+i.id+'"'+(cut>-1&&idx>=cut?' class="over"':'')+'>'+
+    '<td class="rank">'+(idx+1)+'</td>'+
+    '<td><input class="k" data-f="key" value="'+esc(i.key)+'" aria-label="Issue key" placeholder="KEY-1"></td>'+
+    '<td><input data-f="sum" value="'+esc(i.sum)+'" aria-label="Summary" placeholder="What is this item?"></td>'+
+    '<td><input class="n" type="number" min="0" step="any" data-f="reach" value="'+i.reach+'" aria-label="Reach"></td>'+
+    '<td><select class="sel" data-f="impact" aria-label="Impact">'+IMPACT.map(function(o){return '<option value="'+o[0]+'"'+(parseFloat(o[0])===i.impact?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select></td>'+
+    '<td><input class="n" type="number" min="0" max="100" step="any" data-f="conf" value="'+i.conf+'" aria-label="Confidence percent"></td>'+
+    '<td><input class="n" type="number" min="0" step="any" data-f="effort" value="'+i.effort+'" aria-label="Effort in person-weeks"></td>'+
+    '<td><div class="score" style="--w:'+w+'%">'+fmt(score(i))+'</div></td>'+
+    '<td><select class="sel '+mcls(i.mos)+'" data-f="mos" aria-label="MoSCoW">'+MOS.map(function(m){return '<option'+(m===i.mos?' selected':'')+'>'+m+'</option>'}).join('')+'</select></td>'+
+    '<td><button class="del" type="button" data-del="1" aria-label="Delete item">Delete</button></td></tr>';
+  }).join('');
+  stats(list,cut,cap);
+}
+
+function stats(list,cut,cap){
+  var must=items.filter(function(i){return i.mos==='Must'});
+  var mEff=must.reduce(function(s,i){return s+i.effort},0);
+  var tEff=items.reduce(function(s,i){return s+i.effort},0);
+  var top=list[0];
+  var lost=cut>-1?list.slice(cut).filter(function(i){return i.mos==='Must'}).length:0;
+  var capMsg=cap>0?(lost>0?'<span class="warn">'+lost+' Must item'+(lost>1?'s do':' does')+' not fit in this sprint</span>':'<span>'+(cut>-1?'All Musts fit; '+(list.length-cut)+' lower items do not':'Everything fits in this sprint')+'</span>'):'';
+  $('stats').innerHTML=items.length?
+    '<span><b>'+items.length+'</b> items</span>'+
+    '<span><b>'+must.length+'</b> Must, <b>'+fmt(mEff)+'</b> of <b>'+fmt(tEff)+'</b> person-weeks</span>'+
+    capMsg+(top?'<span>Top item: <b>'+esc(top.key||top.sum||'untitled')+'</b></span>':''):'';
+}
+
+$('rows').addEventListener('input',function(e){
+  var f=e.target.dataset.f;if(!f)return;
+  var tr=e.target.closest('tr'),it=items.filter(function(x){return x.id==tr.dataset.id})[0];
+  if(!it)return;
+  if(f==='key'||f==='sum')it[f]=e.target.value;
+  else if(f==='mos')it.mos=e.target.value;
+  else it[f]=num(e.target.value,0);
+  if(f!=='key'&&f!=='sum'){tr.querySelector('.score').textContent=fmt(score(it))}
+});
+$('rows').addEventListener('change',function(e){if(e.target.dataset.f)render()});
+$('rows').addEventListener('click',function(e){
+  if(!e.target.dataset.del)return;
+  var id=e.target.closest('tr').dataset.id;
+  items=items.filter(function(x){return x.id!=id});render();
+});
+
+function setMode(m){
+  mode=m;
+  $('s-rice').setAttribute('aria-pressed',m==='rice');
+  $('s-mos').setAttribute('aria-pressed',m==='mos');
+  render();
+}
+$('s-rice').onclick=function(){setMode('rice')};
+$('s-mos').onclick=function(){setMode('mos')};
+$('cap').addEventListener('input',render);
+$('add').onclick=function(){items.push(mk());render();var r=$('rows').querySelectorAll('tr');var last=r[r.length-1];if(last){var inp=last.querySelector('input');if(inp)inp.focus()}};
+$('clear').onclick=function(){items=[];render()};
+$('sample').onclick=function(){
+  items=[
+    {key:'PAY-101',sum:'Auto-retry failed payouts with backoff',reach:4000,impact:2,conf:80,effort:3,mos:'Must'},
+    {key:'PAY-114',sum:'Merchant onboarding: instant bank account verification',reach:1200,impact:3,conf:70,effort:6,mos:'Must'},
+    {key:'PAY-120',sum:'BBPS biller search with recent payees',reach:9000,impact:1,conf:90,effort:2,mos:'Should'},
+    {key:'PAY-127',sum:'Webhook delivery dashboard for merchants',reach:800,impact:2,conf:60,effort:4,mos:'Should'},
+    {key:'PAY-133',sum:'Dark mode for the merchant console',reach:2500,impact:0.25,conf:100,effort:2,mos:'Could'},
+    {key:'PAY-140',sum:'Export settlement reports to Excel',reach:1500,impact:1,conf:90,effort:1,mos:'Could'},
+    {key:'PAY-152',sum:'Support for multi-currency payins',reach:300,impact:3,conf:40,effort:12,mos:'Won’t'}
+  ].map(mk);
+  render();
+};
+
+function parseCSV(t){
+  var rows=[],r=[],c='',q=false,i;
+  for(i=0;i<t.length;i++){
+    var ch=t[i];
+    if(q){if(ch==='"'){if(t[i+1]==='"'){c+='"';i++}else q=false}else c+=ch}
+    else if(ch==='"')q=true;
+    else if(ch===','){r.push(c);c=''}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&t[i+1]==='\n')i++;r.push(c);c='';if(r.length>1||r[0]!=='')rows.push(r);r=[]}
+    else c+=ch;
+  }
+  if(c!==''||r.length){r.push(c);rows.push(r)}
+  return rows;
+}
+function col(h,names){
+  for(var n=0;n<names.length;n++){var k=h.indexOf(names[n]);if(k>-1)return k}return -1;
+}
+function importCSV(text){
+  var rows=parseCSV(text.trim());
+  if(rows.length<2){$('msg').textContent='Nothing to import. Paste a CSV with a header row and at least one item.';return}
+  var h=rows[0].map(function(x){return x.trim().toLowerCase()});
+  var ck=col(h,['issue key','key']),cs=col(h,['summary','title']),
+      cr=col(h,['reach']),ci=col(h,['impact']),cc=col(h,['confidence','conf','confidence %']),ce=col(h,['effort','story points']),cm=col(h,['moscow']);
+  if(cs<0&&ck<0){$('msg').textContent='No Summary or Issue key column found. Check the header row.';return}
+  var added=0;
+  rows.slice(1).forEach(function(r){
+    var m=cm>-1?(r[cm]||'').trim().replace(/'/g,'’'):'';
+    m=m?m.charAt(0).toUpperCase()+m.slice(1).toLowerCase():'';
+    items.push(mk({key:ck>-1?r[ck]:'',sum:cs>-1?r[cs]:'',reach:cr>-1?r[cr]:undefined,impact:ci>-1?r[ci]:undefined,conf:cc>-1?r[cc]:undefined,effort:ce>-1?r[ce]:undefined,mos:m}));
+    added++;
+  });
+  $('msg').textContent='Imported '+added+' items. Set Reach, Impact, Confidence and Effort for any row still on defaults.';
+  render();
+}
+$('imp').onclick=function(){importCSV($('csv').value)};
+$('file').onclick=function(){$('fileIn').click()};
+$('fileIn').onchange=function(e){
+  var f=e.target.files[0];if(!f)return;
+  var rd=new FileReader();
+  rd.onload=function(){$('csv').value=rd.result;importCSV(rd.result)};
+  rd.readAsText(f);
+};
+$('exp').onclick=function(){
+  var q=function(s){s=String(s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+  var out=['Rank,Issue key,Summary,Reach,Impact,Confidence,Effort,RICE,MoSCoW'].concat(sorted().map(function(i,n){
+    return [n+1,q(i.key),q(i.sum),i.reach,i.impact,i.conf,i.effort,Math.round(score(i)*10)/10,i.mos].join(',');
+  })).join('\n');
+  $('csv').value=out;$('csv').select();
+  var done=function(){$('msg').textContent='Ranked backlog is in the box above. Copy it into a sheet or Jira import.'};
+  try{navigator.clipboard.writeText(out).then(function(){$('msg').textContent='Copied the ranked backlog as CSV.'},done)}catch(err){done()}
+};
+
+render();
+})();
+</script>
+</body>
+</html>
